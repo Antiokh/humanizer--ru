@@ -1,0 +1,29 @@
+name: Assemble GPT promo image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.image-upload/**'
+      - '.github/workflows/assemble-gpt-promo.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble image
+        run: |
+          mkdir -p assets
+          cat .image-upload/part-* > assets/russian-editor-gpt-promo.webp
+          test "$(wc -c < assets/russian-editor-gpt-promo.webp)" -eq 37436
+          rm -rf .image-upload
+          rm -f .github/workflows/assemble-gpt-promo.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Add GPT promo image"
+          git push
