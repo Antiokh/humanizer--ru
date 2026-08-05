@@ -15,7 +15,6 @@ import sys
 
 # --- жёсткие запреты (номера паттернов из references/patterns.md) ---
 ERRORS = [
-    ("23 длинное тире", re.compile(r"[—–]")),
     ("23 мат-знаки", re.compile(r"(?:[≈≥≤≠±⇒←→]|\s[=><&+]\s|\d\+(?!\d)|\bvs\.?\b)")),
     ("13 негативный параллелизм", re.compile(
         r"[Нн]е (?:просто|только)\b(?:[^.!?\n]{0,80}?\bно и\b)?|[Рр]ечь идёт не только|"
@@ -119,6 +118,16 @@ def lint(text):
     sents = prose_sentences(lines)
     lengths = [len(s.split()) for s in sents]
 
+    # Типографически правильное тире допустимо. Предупреждаем только о шаблонном переизбытке.
+    prose_text = "\n".join(
+        l for l in lines
+        if l.strip() and not re.match(r"^\s*(#|\||[-*+]\s|\d+\.\s|>)", l)
+    )
+    dash_count = len(re.findall(r"[—–]", prose_text))
+    if dash_count >= 3 and dash_count > max(2, len(sents) // 3):
+        findings.append(("WARN", 0, "переизбыток тире",
+                         f"{dash_count} тире на {len(sents)} предложений - проверь, не стал ли знак шаблоном"))
+
     # 33: повтор глагольной основы в соседних предложениях
     for a, b in zip(range(len(sents) - 1), range(1, len(sents))):
         common = verb_stems(sents[a]) & verb_stems(sents[b])
@@ -170,12 +179,15 @@ def self_test():
     bad = "Это не просто курс — это экосистема. Скорость > идеальности. Без кода. Без настроек. Итог ≈ 5+ часов, джуны vs сеньоры."
     kinds = [f[2] for f in lint(bad) if f[0] == "ERROR"]
     assert any("13" in k for k in kinds), kinds
-    assert any("тире" in k for k in kinds), kinds
+    assert not any("тире" in k for k in kinds), kinds
     assert any("мат-знаки" in k for k in kinds), kinds
     assert any("27" in k for k in kinds), kinds
 
-    ok = "Обычный текст - с коротким тире, без слопа. Цифры 12 и 87 на месте.\n> цитата\n+ пункт списка"
+    ok = "Обычный текст — с нормативным тире, без слопа. Цифры 12 и 87 на месте.\n> цитата\n+ пункт списка"
     assert not [f for f in lint(ok) if f[0] == "ERROR"], lint(ok)
+
+    dashy = "Первый тезис — короткий. Второй тезис — тоже. Третий тезис — снова. Четвёртый тезис — по шаблону."
+    assert any("тире" in f[2] for f in lint(dashy) if f[0] == "WARN"), lint(dashy)
 
     warn = "Важно отметить, что по сути будущее выглядит ярким."
     assert len([f for f in lint(warn) if f[0] == "WARN"]) >= 3
