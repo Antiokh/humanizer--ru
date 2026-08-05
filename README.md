@@ -8,6 +8,18 @@
 
 Два дефиса в названии отделяют этот вариант от апстрима и сразу показывают, что правила типографики здесь отличаются.
 
+## Готовый GPT
+
+Редактор уже доступен в ChatGPT — ничего устанавливать и настраивать не нужно.
+
+<a href="https://chatgpt.com/g/g-6a730959eff08191b68861328e6f5dc8-russkii-redaktor-na-baze-humanizer-ru">
+  <img src="assets/russian-editor-gpt-promo.webp" alt="Русский редактор на базе humanizer--ru" width="512">
+</a>
+
+### [Открыть «Русский редактор» в ChatGPT](https://chatgpt.com/g/g-6a730959eff08191b68861328e6f5dc8-russkii-redaktor-na-baze-humanizer-ru)
+
+**Русский редактор (на базе humanizer--ru)** от Anton Nazarov убирает канцелярит, воду и AI-слоп, сохраняя факты, голос, резкость и нормальную русскую типографику. Нормативное тире «—» разрешено; шаблонный переизбыток получает предупреждение.
+
 ## Главное различие
 
 | Правило | `smixs/humanizer-ru` | `Antiokh/humanizer--ru` |
@@ -66,7 +78,7 @@ git clone https://github.com/Antiokh/humanizer--ru.git ~/.claude/skills/humanize
 
 В любом агенте можно написать: «очеловечь этот текст», «убери воду», «очисти от признаков AI».
 
-## Custom GPT для ChatGPT
+## Собрать свой Custom GPT
 
 В папке [`gpt`](gpt/) лежит готовая конфигурация персонального редактора:
 
