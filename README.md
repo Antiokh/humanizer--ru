@@ -66,6 +66,16 @@ git clone https://github.com/Antiokh/humanizer--ru.git ~/.claude/skills/humanize
 
 В любом агенте можно написать: «очеловечь этот текст», «убери воду», «очисти от признаков AI».
 
+## Custom GPT для ChatGPT
+
+В папке [`gpt`](gpt/) лежит готовая конфигурация персонального редактора:
+
+- [`gpt/SETUP.md`](gpt/SETUP.md) — поля GPT Builder, возможности и список Knowledge-файлов;
+- [`gpt/INSTRUCTIONS.md`](gpt/INSTRUCTIONS.md) — готовые инструкции для поля Instructions;
+- [`gpt/TESTS.md`](gpt/TESTS.md) — smoke-тесты для Preview перед публикацией.
+
+Для Custom GPT включи Web Search, Canvas и Code Interpreter & Data Analysis. В Knowledge загрузи `references/patterns.md`, `knowledge/corrections.md`, `scripts/lint.py` и `SKILL.md`.
+
 ## Было — стало
 
 | Было | Стало |
@@ -83,7 +93,7 @@ git clone https://github.com/Antiokh/humanizer--ru.git ~/.claude/skills/humanize
 
 ## Проверка
 
-В репозитории 18 eval-сценариев и 121 проверка: сохранность фактов и цифр, ловушки на замену одного слопа другим, а также чистые тексты, которые нельзя трогать.
+В репозитории 18 апстримных eval-сценариев и отдельный набор `evals/fork-smoke.json` для проверки типографической политики форка. Пояснения находятся в [`evals/README.md`](evals/README.md).
 
 Линтер `scripts/lint.py` работает на обычном Python 3 без зависимостей. Нормативное тире проходит проверку. Высокая плотность тире даёт предупреждение, но не блокирует результат автоматически.
 
@@ -96,7 +106,7 @@ python3 scripts/lint.py текст.md
 
 - [smixs/humanizer-ru](https://github.com/smixs/humanizer-ru) — апстрим этого форка;
 - [humanizer](https://github.com/blader/humanizer) от [@blader](https://github.com/blader) — исходная основа;
-- [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) и [русское эссе](https://ru.wikipedia.org/wiki/Википедия:Признаки_сгенерированности_текста);
+- [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Википедия:Признаки_сгенерированности_текста) и [русское эссе](https://ru.wikipedia.org/wiki/Википедия:Признаки_сгенерированности_текста);
 - Максим Ильяхов, «Пиши, сокращай».
 
 ## Лицензия
