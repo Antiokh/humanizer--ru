@@ -65,13 +65,13 @@ npx skills add Antiokh/humanizer--ru -g
 Или вручную для Claude Code:
 
 ```bash
-git clone https://github.com/Antiokh/humanizer--ru.git ~/.claude/skills/humanizer-ru
+git clone https://github.com/Antiokh/humanizer--ru.git ~/.claude/skills/humanizer--ru
 ```
 
-Внутреннее имя скилла пока сохраняется как `humanizer-ru`, поэтому существующие команды и установки не ломаются:
+Внутреннее имя скилла: `humanizer--ru`.
 
 ```text
-/humanizer-ru
+/humanizer--ru
 
 [ваш текст]
 ```

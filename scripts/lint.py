@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Детерминированный линтер AI-слопа для humanizer-ru (v2).
+"""Детерминированный линтер AI-слопа для humanizer--ru (v2).
 
 Использование:
     python3 scripts/lint.py file.md      # или stdin: python3 scripts/lint.py < file.md
