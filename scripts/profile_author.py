@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Build a descriptive author-style profile from a Russian text corpus.
 
-This script does not diagnose personality and does not decide what is "good"
-Russian. It extracts observable frequencies for the humanizer+ru+user layer.
-Semantic interpretation is left to the editor/model and must be supported by
-corpus examples.
+The profiler is deliberately descriptive:
+- it does not diagnose personality;
+- it does not decide what is "good" Russian;
+- it preserves document boundaries for sentence and n-gram statistics;
+- it does not emit source paths into the profile.
+
+The output follows profiles/schema.json (v1).
 """
 
 from __future__ import annotations
@@ -40,27 +43,29 @@ CERTAINTY_MARKERS = [
     "точно", "очевидно", "безусловно", "однозначно", "реально", "точно не",
 ]
 
-# Very rough proxy for a finite/infinitive verb. It is intentionally labelled
-# as a proxy in output; do not treat it as morphology.
 VERB_PROXY = re.compile(
     r"\b[а-яё]{3,}(?:ть|ться|ет|ёт|ют|ут|ит|ат|ят|ешь|ишь|ем|им|ете|ите|"
     r"ал|ала|али|ял|яла|яли|ил|ила|или|лся|лась|лись|ем|ен|ена|ены)\b",
     re.I,
 )
 
-FIRST_PERSON = re.compile(r"\b(?:я|мы|мне|нам|меня|нас|мой|моя|моё|мои|наш|наша|наше|наши)\b", re.I)
+FIRST_PERSON = re.compile(
+    r"\b(?:я|мы|мне|нам|меня|нас|мой|моя|моё|мои|наш|наша|наше|наши)\b",
+    re.I,
+)
 
 
-def load_paths(paths: list[str]) -> list[tuple[str, str]]:
-    docs: list[tuple[str, str]] = []
+def load_paths(paths: list[str]) -> list[str]:
+    """Read UTF-8 .txt/.md documents without exposing filesystem paths."""
+    docs: list[str] = []
     for raw in paths:
         p = Path(raw)
         if p.is_dir():
             for child in sorted(p.rglob("*")):
                 if child.suffix.lower() in {".txt", ".md"} and child.is_file():
-                    docs.append((str(child), child.read_text(encoding="utf-8")))
+                    docs.append(child.read_text(encoding="utf-8"))
         elif p.is_file():
-            docs.append((str(p), p.read_text(encoding="utf-8")))
+            docs.append(p.read_text(encoding="utf-8"))
         else:
             raise FileNotFoundError(raw)
     return docs
@@ -72,6 +77,8 @@ def words(text: str) -> list[str]:
 
 def sentences(text: str) -> list[str]:
     flat = re.sub(r"\s*\n+\s*", " ", text).strip()
+    if not flat:
+        return []
     return [s.strip() for s in SENT_SPLIT.split(flat) if s.strip()]
 
 
@@ -87,13 +94,30 @@ def percentile(values: list[int], q: float) -> float:
 
 
 def count_phrases(text_low: str, phrases: list[str]) -> dict[str, int]:
-    return {p: len(re.findall(r"(?<!\w)" + re.escape(p) + r"(?!\w)", text_low)) for p in phrases}
+    return {
+        p: len(re.findall(r"(?<!\w)" + re.escape(p) + r"(?!\w)", text_low))
+        for p in phrases
+    }
 
 
-def top_ngrams(tokens: list[str], n: int, limit: int = 20) -> list[dict]:
+def merge_phrase_counts(docs: list[str], phrases: list[str]) -> Counter[str]:
+    total: Counter[str] = Counter()
+    for text in docs:
+        total.update(count_phrases(text.lower(), phrases))
+    return total
+
+
+def ngram_counts(tokens: list[str], n: int) -> Counter[tuple[str, ...]]:
     if len(tokens) < n:
-        return []
-    grams = Counter(tuple(tokens[i : i + n]) for i in range(len(tokens) - n + 1))
+        return Counter()
+    return Counter(tuple(tokens[i:i + n]) for i in range(len(tokens) - n + 1))
+
+
+def top_ngrams_by_document(docs: list[str], n: int, limit: int = 20) -> list[dict]:
+    """Aggregate n-grams without creating cross-document token pairs."""
+    grams: Counter[tuple[str, ...]] = Counter()
+    for text in docs:
+        grams.update(ngram_counts(words(text), n))
     return [
         {"text": " ".join(g), "count": c}
         for g, c in grams.most_common(limit)
@@ -101,25 +125,38 @@ def top_ngrams(tokens: list[str], n: int, limit: int = 20) -> list[dict]:
     ]
 
 
-def analyse(docs: list[tuple[str, str]]) -> dict:
-    all_text = "\n\n".join(text for _, text in docs)
-    low = all_text.lower()
-    toks = words(all_text)
-    sents = sentences(all_text)
-    sent_lengths = [len(words(s)) for s in sents]
-    total_words = len(toks)
+def rate_item(text: str, count: int, total_words: int) -> dict:
+    return {
+        "text": text,
+        "count": count,
+        "per_10k_words": round(count * 10000 / total_words, 2) if total_words else 0,
+    }
 
-    markers = count_phrases(low, DISCOURSE_MARKERS)
-    repairs = count_phrases(low, SELF_REPAIR_MARKERS)
-    hedges = count_phrases(low, STANCE_HEDGES)
-    certainty = count_phrases(low, CERTAINTY_MARKERS)
 
-    no_verb_proxy = [s for s in sents if len(words(s)) >= 1 and not VERB_PROXY.search(s)]
-    first_person_sents = [s for s in sents if FIRST_PERSON.search(s)]
+def analyse(docs: list[str]) -> dict:
+    all_text = "\n\n".join(docs)
+    all_tokens = [token for doc in docs for token in words(doc)]
+    all_sentences = [sent for doc in docs for sent in sentences(doc)]
+    sent_lengths = [len(words(s)) for s in all_sentences]
+    total_words = len(all_tokens)
 
-    latin_tokens = [t for t in toks if re.fullmatch(r"[a-z]+(?:-[a-z]+)?", t)]
+    markers = merge_phrase_counts(docs, DISCOURSE_MARKERS)
+    repairs = merge_phrase_counts(docs, SELF_REPAIR_MARKERS)
+    hedges = merge_phrase_counts(docs, STANCE_HEDGES)
+    certainty = merge_phrase_counts(docs, CERTAINTY_MARKERS)
 
-    punctuation = {
+    no_verb_proxy = [
+        s for s in all_sentences
+        if words(s) and not VERB_PROXY.search(s)
+    ]
+    first_person_sents = [s for s in all_sentences if FIRST_PERSON.search(s)]
+
+    latin_tokens = [
+        token for token in all_tokens
+        if re.fullmatch(r"[a-z]+(?:-[a-z]+)?", token)
+    ]
+
+    punctuation_counts = {
         "em_dash": all_text.count("—"),
         "en_dash": all_text.count("–"),
         "colon": all_text.count(":"),
@@ -131,54 +168,77 @@ def analyse(docs: list[tuple[str, str]]) -> dict:
         "parentheses_open": all_text.count("("),
     }
 
-    def per_10k(count: int) -> float:
-        return round(count * 10000 / total_words, 2) if total_words else 0
-
     return {
         "version": 1,
         "corpus": {
             "documents": len(docs),
             "words": total_words,
-            "sentences": len(sents),
-            "files": [name for name, _ in docs],
+            "sentences": len(all_sentences),
         },
-        "sentence_length": {
-            "p25": percentile(sent_lengths, 0.25),
-            "median": percentile(sent_lengths, 0.50),
-            "p75": percentile(sent_lengths, 0.75),
-            "p90": percentile(sent_lengths, 0.90),
-            "short_le_4_rate": round(sum(x <= 4 for x in sent_lengths) / len(sents), 4) if sents else 0,
+        "lexicon": {
+            "discourse_markers": [
+                rate_item(k, v, total_words)
+                for k, v in sorted(markers.items(), key=lambda x: (-x[1], x[0]))
+                if v
+            ],
+            "self_repair_markers": [
+                rate_item(k, v, total_words)
+                for k, v in sorted(repairs.items(), key=lambda x: (-x[1], x[0]))
+                if v
+            ],
+            "code_switching": {
+                "latin_token_count": len(latin_tokens),
+                "latin_token_rate": round(len(latin_tokens) / total_words, 4)
+                if total_words else 0,
+                "top_latin_tokens": [
+                    {"text": token, "count": count}
+                    for token, count in Counter(latin_tokens).most_common(30)
+                ],
+            },
+            "ngrams": {
+                "bigrams": top_ngrams_by_document(docs, 2),
+                "trigrams": top_ngrams_by_document(docs, 3),
+            },
         },
-        "discourse_markers": [
-            {"text": k, "count": v, "per_10k_words": per_10k(v)}
-            for k, v in sorted(markers.items(), key=lambda x: (-x[1], x[0])) if v
-        ],
-        "self_repair_markers": [
-            {"text": k, "count": v, "per_10k_words": per_10k(v)}
-            for k, v in sorted(repairs.items(), key=lambda x: (-x[1], x[0])) if v
-        ],
-        "stance": {
-            "hedges": {k: v for k, v in hedges.items() if v},
-            "certainty": {k: v for k, v in certainty.items() if v},
-        },
-        "syntax_proxies": {
-            "sentences_without_verb_proxy_rate": round(len(no_verb_proxy) / len(sents), 4) if sents else 0,
-            "first_person_sentence_rate": round(len(first_person_sents) / len(sents), 4) if sents else 0,
-            "warning": "These are regex proxies, not morphological analysis.",
+        "syntax": {
+            "sentence_length": {
+                "p25": percentile(sent_lengths, 0.25),
+                "median": percentile(sent_lengths, 0.50),
+                "p75": percentile(sent_lengths, 0.75),
+                "p90": percentile(sent_lengths, 0.90),
+            },
+            "short_le_4_rate": round(
+                sum(x <= 4 for x in sent_lengths) / len(all_sentences), 4
+            ) if all_sentences else 0,
+            "sentences_without_verb_proxy_rate": round(
+                len(no_verb_proxy) / len(all_sentences), 4
+            ) if all_sentences else 0,
+            "first_person_sentence_rate": round(
+                len(first_person_sents) / len(all_sentences), 4
+            ) if all_sentences else 0,
+            "proxy_warning": "Regex proxies are descriptive, not morphological analysis.",
         },
         "punctuation": {
-            key: {"count": value, "per_10k_words": per_10k(value)}
-            for key, value in punctuation.items()
+            key: {
+                "count": value,
+                "per_10k_words": round(value * 10000 / total_words, 2)
+                if total_words else 0,
+            }
+            for key, value in punctuation_counts.items()
         },
-        "code_switching": {
-            "latin_token_count": len(latin_tokens),
-            "latin_token_rate": round(len(latin_tokens) / total_words, 4) if total_words else 0,
-            "top_latin_tokens": Counter(latin_tokens).most_common(30),
+        "stance": {
+            "hedges": [
+                rate_item(k, v, total_words)
+                for k, v in sorted(hedges.items(), key=lambda x: (-x[1], x[0]))
+                if v
+            ],
+            "certainty": [
+                rate_item(k, v, total_words)
+                for k, v in sorted(certainty.items(), key=lambda x: (-x[1], x[0]))
+                if v
+            ],
         },
-        "ngrams": {
-            "bigrams": top_ngrams(toks, 2),
-            "trigrams": top_ngrams(toks, 3),
-        },
+        "observed_errors": [],
         "settings": {
             "imitate_errors": False,
             "correct_norm_errors": True,
