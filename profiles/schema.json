@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/humanizer-plus-ru/profile.schema.json",
+  "title": "humanizer+ru author profile",
+  "type": "object",
+  "required": ["version", "corpus", "settings"],
+  "properties": {
+    "version": {"const": 1},
+    "author": {"type": "string"},
+    "corpus": {
+      "type": "object",
+      "required": ["documents", "words"],
+      "properties": {
+        "documents": {"type": "integer", "minimum": 0},
+        "words": {"type": "integer", "minimum": 0},
+        "sentences": {"type": "integer", "minimum": 0},
+        "genres": {"type": "object"},
+        "files": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    },
+    "lexicon": {
+      "type": "object",
+      "properties": {
+        "preferred_markers": {"type": "array", "items": {"type": "string"}},
+        "preferred_terms": {"type": "array", "items": {"type": "string"}},
+        "anglicisms": {"type": "array", "items": {"type": "string"}},
+        "intensifiers": {"type": "array", "items": {"type": "string"}},
+        "rare_or_avoid": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    },
+    "sentence_length": {"type": "object", "additionalProperties": true},
+    "syntax": {"type": "object", "additionalProperties": true},
+    "syntax_proxies": {"type": "object", "additionalProperties": true},
+    "punctuation": {"type": "object", "additionalProperties": true},
+    "discourse_markers": {"type": "array"},
+    "self_repair_markers": {"type": "array"},
+    "rhetoric": {"type": "object", "additionalProperties": true},
+    "stance": {"type": "object", "additionalProperties": true},
+    "code_switching": {"type": "object", "additionalProperties": true},
+    "ngrams": {"type": "object", "additionalProperties": true},
+    "observed_errors": {"type": "array"},
+    "settings": {
+      "type": "object",
+      "required": ["imitate_errors"],
+      "properties": {
+        "imitate_errors": {"type": "boolean", "default": false},
+        "correct_norm_errors": {"type": "boolean", "default": true}
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
