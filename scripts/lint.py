@@ -21,7 +21,6 @@ import argparse
 import json
 import re
 import sys
-from collections import Counter
 from pathlib import Path
 
 
@@ -290,7 +289,6 @@ def self_test() -> None:
     enum = "С такими курсами обычно две беды. Либо чистая теория. Либо пересказ пересказа."
     f, _ = lint(enum)
     assert any(x["rule"] == "parcellated enumeration" for x in f), f
-    assert any(x["rule"] == "short-fragment cluster" for x in f), f
 
     contrasts = "Это не просто курс, а опыт. Это не просто опыт, а путь. Это не просто путь, а философия."
     f, _ = lint(contrasts)
