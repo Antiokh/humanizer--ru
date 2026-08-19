@@ -25,13 +25,12 @@
 1. `references/russian-language.md`
 2. `references/rule-audit.md`
 3. `references/nora-gal.md`
-4. `references/patterns.md`
-5. `references/author-profile.md`
-6. `knowledge/corrections.md`
-7. `scripts/lint.py`
-8. `SKILL.md`
+4. `references/author-profile.md`
+5. `knowledge/corrections.md`
+6. `scripts/lint.py`
+7. `SKILL.md`
 
-`russian-language.md` и `rule-audit.md` имеют приоритет над историческими hard bans из `patterns.md`.
+`references/patterns.md` пока **не загружай в Knowledge**. Он остаётся историческим справочником апстрима и содержит старые hard bans, которые противоречат новой иерархии. После полной переписи паттернов файл можно вернуть в Knowledge.
 
 Не загружай `evals/*.json` в Knowledge: это тестовые наборы, а не редакционные справочники.
 
