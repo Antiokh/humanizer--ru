@@ -1,0 +1,43 @@
+name: quality
+
+on:
+  push:
+    branches:
+      - main
+      - agent/**
+  pull_request:
+
+jobs:
+  python-and-json:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile Python
+        run: python -m compileall -q scripts
+      - name: Linter self-test
+        run: python scripts/lint.py --self-test
+      - name: Smoke-test author profiler
+        run: |
+          tmpdir="$(mktemp -d)"
+          printf '%s\n' 'Ну вот, первый текст. Второй — короче. Я всё-таки думаю, что так лучше.' > "$tmpdir/sample.txt"
+          python scripts/profile_author.py "$tmpdir" -o "$tmpdir/profile.json"
+          python - <<'PY' "$tmpdir/profile.json"
+          import json, sys
+          p = json.load(open(sys.argv[1], encoding='utf-8'))
+          assert p['version'] == 1
+          assert p['settings']['imitate_errors'] is False
+          assert p['corpus']['documents'] == 1
+          PY
+      - name: Validate JSON fixtures
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for path in sorted(Path('.').rglob('*.json')):
+              with path.open(encoding='utf-8') as f:
+                  json.load(f)
+              print(path)
+          PY
